@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 (Tetris Clock) - Base Fixed</title>
+    <title>테트리스 중독자의 시계 (Tetris Clock) - Fixed</title>
     <style>
         :root {
             --bg-color: #0a0a12;
@@ -26,7 +26,7 @@
         /* 16:9 세로 디스플레이 레이아웃 캐비닛 */
         #cabinet {
             width: 450px;
-            height: 850px;
+            height: 800px;
             background: #111;
             border: 4px solid #333;
             border-radius: 10px;
@@ -62,15 +62,15 @@
             letter-spacing: 5px;
         }
 
-        /* 가로 10 × 세로 62 게임판 */
+        /* 가로 10 × 세로 60 게임판 */
         #game-container {
             position: relative;
-            width: 200px;  /* 1칸당 20px * 10칸 = 200px */
-            height: 620px; /* 1칸당 10px * 62칸 = 620px */
+            width: 200px;  /* 1칸당 20px * 10칸 */
+            height: 600px; /* 1칸당 10px * 60칸 */
             border: 3px solid #555;
             background: var(--grid-color);
             overflow: hidden;
-            transition: transform 0.1s ease-out; /* [4번 반영] 튕기는 모션을 컨테이너 전체에 줌으로써 블록 위치 유지 */
+            transition: transform 0.1s ease-out; /* [수정] 튕기는 모션을 컨테이너 전체에 주어 블록 위치 고정 */
         }
 
         canvas {
@@ -101,7 +101,7 @@
     </div>
 
     <div id="game-container">
-        <canvas id="tetrisCanvas" width="200" height="620"></canvas>
+        <canvas id="tetrisCanvas" width="200" height="600"></canvas>
     </div>
 </div>
 
@@ -112,18 +112,17 @@
     const gameContainer = document.getElementById('game-container');
 
     const COLS = 10;
-    const ROWS = 62; 
+    const ROWS = 60;
     const BLOCK_SIZE_X = 20; 
     const BLOCK_SIZE_Y = 10; 
 
-    // 선명한 무지개 성벽 색상 조합
-    const RAINBOW = ['#ff0055', '#ff9900', '#ffcc00', '#33cc33', '#3399ff', '#9933ff'];
+    const COLORS = ['#e53e3e', '#dd6b20', '#ecc94b', '#38a169', '#3182ce', '#805ad5'];
     let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     
-    const targetX = 9;       
-    let isAnimating = false; 
+    const targetX = 9;       // 맨 오른쪽 10번째 열(인덱스 9) 공백 유지
+    let isAnimating = false; // 정각 애니메이션 중 타이머 정지용 제어 변수
 
-    // 성벽 초기화 함수: 한 줄 무지개색, 한 줄 빈칸 패턴 생성
+    // 실시간 분(Minute)에 따른 성벽 초기화 함수 (원상복구: 빽빽하게 꽉 찬 성벽)
     function generateWall() {
         const now = new Date();
         const currentMin = now.getMinutes();
@@ -133,21 +132,16 @@
 
         board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
         
-        let colorIdx = 0;
-        for (let r = ROWS - 1; r >= ROWS - activeRows; r--) {
-            if ((ROWS - 1 - r) % 2 === 0) {
-                let rowColor = RAINBOW[colorIdx % RAINBOW.length];
-                for (let c = 0; c < COLS; c++) {
-                    if (c !== targetX) {
-                        board[r][c] = rowColor;
-                    }
+        for (let r = ROWS - activeRows; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (c !== targetX) {
+                    board[r][c] = COLORS[(r + c) % COLORS.length];
                 }
-                colorIdx++;
             }
         }
     }
 
-    // 렌더링 함수
+    // 렌더링 함수 (원상복구: 위에서 아래로 하강)
     function draw(currentSec = 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -165,12 +159,10 @@
         if (!isAnimating) {
             ctx.fillStyle = '#00f0f0';
             
-            if (currentSec > 0 && currentSec < 60) {
-                // [2번 반영] 출발 위치를 위로 4칸 이동 (기존 58에서 54로 변경)
-                let headY = 54 - (currentSec - 1); 
-                
+            if (currentSec > 0) {
                 for (let i = 0; i < 4; i++) {
-                    let blockY = headY + i; 
+                    // [수정] 시작하는 위치를 기존보다 위로 4칸 이동시킴 (- 4 적용)
+                    let blockY = (currentSec - 1) + i - 4; 
                     
                     if (blockY >= 0 && blockY < ROWS) {
                         ctx.fillRect(targetX * BLOCK_SIZE_X, blockY * BLOCK_SIZE_Y, BLOCK_SIZE_X - 1, BLOCK_SIZE_Y - 1);
@@ -191,28 +183,23 @@
     // 15분 주기 완료 시 초고속 리로드 애니메이션
     function reloadWallAnimation() {
         isAnimating = true;
-        let r = ROWS - 1;
-        let colorIdx = 0;
+        let r = 0;
         
         const interval = setInterval(() => {
-            if (r >= 0) {
-                if ((ROWS - 1 - r) % 2 === 0) {
-                    let rowColor = RAINBOW[colorIdx % RAINBOW.length];
-                    for (let c = 0; c < COLS; c++) {
-                        if (c !== targetX) board[r][c] = rowColor;
-                    }
-                    colorIdx++;
+            if (r < ROWS) {
+                for (let c = 0; c < COLS; c++) {
+                    if (c !== targetX) board[r][c] = COLORS[(r + c) % COLORS.length];
                 }
                 draw(0);
-                r -= 2;
+                r += 2;
             } else {
                 clearInterval(interval);
                 isAnimating = false;
             }
-        }, 20);
+        }, 15);
     }
 
-    // 메인 시계 타이머 (0.2초마다 실시간 체크)
+    // 메인 시계 타이머 (매 순간 호출)
     function ticTok() {
         if (isAnimating) return;
 
@@ -236,7 +223,7 @@
         const clearedLines = ((currentMin - 1 + 15) % 15) * 4; 
         const floorY = ROWS - clearedLines;
 
-        // 1단계: 00초 정각에 롱블록을 맨 바닥에 완벽히 채워진 형태로 강제 고정
+        // 1단계: 00초 정각에 롱블록을 맨 바닥에 완벽히 채워진 형태로 강제 렌더링
         for (let i = 0; i < 4; i++) {
             let blockY = (floorY - 4) + i;
             if (blockY >= 0 && blockY < ROWS) {
@@ -246,12 +233,12 @@
         draw(0);
         gameContainer.classList.add('flash'); 
 
-        // [4번 반영] canvas가 아닌 gameContainer 자체를 튕겨서 하늘색 블록이 바닥에 그대로 붙어있게 처리
+        // [수정] 컨테이너 전체를 튕기게 하여 하늘색 블록이 바닥 도착 위치에 그대로 고정되게 처리
         gameContainer.style.transform = "translateY(-20px)";
 
-        // 2단계: 0.3초(300ms) 동안 홀딩 후 원래 위치로 떨어지며 한 번에 삭제
+        // 2단계: 0.3초(300ms) 동안 빈틈없이 가득 찬 모습을 그대로 노출 (Freeze)
         setTimeout(() => {
-            gameContainer.style.transform = "translateY(0px)"; 
+            gameContainer.style.transform = "translateY(0px)"; // 제자리 복귀
             gameContainer.classList.remove('flash');
 
             // 3단계: [4줄 파괴] + [점수판 변동] + [성벽 하강] 동시에 처리
@@ -264,7 +251,7 @@
 
             updateScoreBoard(currentMin);
             
-            // [1번, 3번 반영] 데이터 연산 직후 draw(0)를 즉시 실행하여 실시간 화면 갱신 강제 적용
+            // [수정] 새로고침 없이 즉시 실시간 화면에 반영되도록 draw(0) 강제 호출
             draw(0); 
             isAnimating = false;
 
