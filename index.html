@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 (Tetris Clock) - Fixed</title>
+    <title>테트리스 중독자의 시계 (Tetris Clock) - Grid Fixed</title>
     <style>
         :root {
             --bg-color: #0a0a12;
@@ -26,7 +26,7 @@
         /* 16:9 세로 디스플레이 레이아웃 캐비닛 */
         #cabinet {
             width: 450px;
-            height: 800px;
+            height: 850px;
             background: #111;
             border: 4px solid #333;
             border-radius: 10px;
@@ -62,33 +62,24 @@
             letter-spacing: 5px;
         }
 
-        /* 가로 10 × 세로 64 게임판 */
+        /* [수정] 시각적 배경은 총 64칸 분량(640px)으로 설정하여 상단 4칸 여백 확보 */
         #game-container {
             position: relative;
-            width: 200px;  /* 1칸당 20px * 10칸 */
-            height: 640px; /* [수정] 1칸당 10px * 64칸 = 640px */
+            width: 200px;  
+            height: 640px; 
             border: 3px solid #555;
             background: var(--grid-color);
             overflow: hidden;
             transition: transform 0.1s ease-out; 
         }
 
+        /* [수정] 실제 블록이 쌓이는 60칸(600px)짜리 캔버스를 바닥 쪽에 밀착시키고, 상단에 40px 여백을 둠 */
         canvas {
             display: block;
             background: transparent;
             position: absolute;
-            top: 0;
+            bottom: 0;
             left: 0;
-        }
-
-        /* 60초 정각 연출용 번쩍임 효과 */
-        .flash {
-            animation: flash-anim 0.3s ease-in-out;
-        }
-        @keyframes flash-anim {
-            0% { filter: brightness(1); }
-            50% { filter: brightness(2.5); }
-            100% { filter: brightness(1); }
         }
     </style>
 </head>
@@ -101,7 +92,7 @@
     </div>
 
     <div id="game-container">
-        <canvas id="tetrisCanvas" width="200" height="640"></canvas>
+        <canvas id="tetrisCanvas" width="200" height="600"></canvas>
     </div>
 </div>
 
@@ -112,7 +103,7 @@
     const gameContainer = document.getElementById('game-container');
 
     const COLS = 10;
-    const ROWS = 64; // [수정] 전체 세로 64칸으로 변경
+    const ROWS = 60; // [수정] 실제 블록이 쌓이는 판은 무조건 60칸으로 원상복구
     const BLOCK_SIZE_X = 20; 
     const BLOCK_SIZE_Y = 10; 
 
@@ -121,19 +112,15 @@
     
     const targetX = 9;       
     let isAnimating = false; 
-    let fixedFloorY = 0; // [수정] 정각 연출 중 블록 고정용 변수
+    let fixedFloorY = 0; 
 
-    // 실시간 분(Minute)에 따른 성벽 초기화 함수
+    // 실시간 분(Minute)에 따른 성벽 초기화 함수 (최대 60칸 완벽 적용)
     function generateWall() {
         const now = new Date();
         const currentMin = now.getMinutes();
         
-        // 15분 주기 중 현재 몇 분이 지났는지 계산
         const clearedLines = (currentMin % 15) * 4;
-        
-        // [수정] 64칸 중 아래서부터 60칸이 최대 성벽이므로, 언제나 상단 4줄은 공백(ROWS - 4)
-        const maxWallRows = ROWS - 4; 
-        const activeRows = maxWallRows - clearedLines;
+        const activeRows = ROWS - clearedLines;
 
         board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
         
@@ -163,8 +150,9 @@
         // 2. 하늘색 롱블록 실시간 위치 그리기
         ctx.fillStyle = '#00f0f0';
         if (!isAnimating) {
-            // [수정] 00초에 가장 상단 칸(Y=0)에서 출발하여 1초에 1칸씩 정확하게 아래로 하강
-            let blockY = currentSec; 
+            // [수정] 64칸 스크린 기준으로 매핑하되, 캔버스 영역(60칸) 내부에서 정확히 하강하도록 위치 조정
+            // 00초에 가장 상단 시각적 여백 끝라인에서 출발해 1초에 1칸씩 하강
+            let blockY = currentSec - 4; 
             
             for (let i = 0; i < 4; i++) {
                 let currentBlockY = blockY + i;
@@ -173,7 +161,7 @@
                 }
             }
         } else {
-            // [수정] 애니메이션 버프 중에는 순간이동하지 않고 정확히 바닥에 안착했던 그 자리에 고정
+            // 애니메이션 연출 중에는 바닥 도착 위치에 그대로 고정
             for (let i = 0; i < 4; i++) {
                 let currentBlockY = (fixedFloorY - 4) + i;
                 if (currentBlockY >= 0 && currentBlockY < ROWS) {
@@ -205,10 +193,6 @@
                 r += 2;
             } else {
                 clearInterval(interval);
-                // [수정] 리로드 완료 후 상단 4줄 다시 한 번 강제 청소 유지
-                for(let topR = 0; topR < 4; topR++) {
-                    board[topR] = Array(COLS).fill(0);
-                }
                 isAnimating = false;
             }
         }, 15);
@@ -235,13 +219,9 @@
     function triggerClearRoutine(currentMin) {
         isAnimating = true;
         
-        // [수정] 새로고침 없이도 완벽히 동기화되도록 분 계산 방식 고정
         const clearedLines = (currentMin % 15) * 4; 
-        const maxWallRows = ROWS - 4;
-        
-        // 이번 정각에 도달했어야 할 바닥 라인 계산
         const floorY = ROWS - (clearedLines === 0 ? 0 : clearedLines - 4);
-        fixedFloorY = floorY; // 애니메이션 동안 블록 위치 홀딩용 고정
+        fixedFloorY = floorY; 
 
         // 1단계: 00초 정각에 롱블록을 맨 바닥에 완벽히 채워진 형태로 강제 렌더링
         for (let i = 0; i < 4; i++) {
@@ -258,21 +238,19 @@
 
         // 2단계: 0.3초(300ms) 동안 빈틈없이 가득 찬 모습을 그대로 노출 (Freeze)
         setTimeout(() => {
-            gameContainer.style.transform = "translateY(0px)"; // 제자리 복귀
+            gameContainer.style.transform = "translateY(0px)"; 
             gameContainer.classList.remove('flash');
 
             // 3단계: [4줄 파괴] + [점수판 변동] + [성벽 하강] 동시에 처리
             const targetRowStart = floorY - 4;
             board.splice(targetRowStart, 4); 
             
-            // [수정] 삭제된 만큼 최상단에 빈 배열을 추가하되 전체 개수 규칙 철저히 엄수
             for (let i = 0; i < 4; i++) {
                 board.unshift(Array(COLS).fill(0));
             }
 
             updateScoreBoard(currentMin);
             
-            // [수정] 다음 초가 시작되기 전, 연산 완료된 상태를 새로고침 없이 즉시 실시간 전파
             draw(0); 
             isAnimating = false;
 
