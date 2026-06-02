@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 (Tetris Clock) - Final Exhibition</title>
+    <title>테트리스 중독자의 시계 (Tetris Clock) - Fixed</title>
     <style>
         :root {
             --bg-color: #0a0a12;
@@ -62,15 +62,15 @@
             letter-spacing: 5px;
         }
 
-        /* [1번 반영] 테트리스 배경 네모를 오차 없이 정확히 블록 64칸 세로 크기(640px)로 고정 */
+        /* 테트리스 게임 화면 배경 네모 (세로 64칸) - 작가님 오리지널 유지 */
         #game-container {
             position: relative;
-            width: 200px;  /* 1칸당 20px * 10칸 = 200px */
-            height: 640px; /* 1칸당 10px * 64칸 = 640px */
+            width: 200px;  
+            height: 640px; 
             border: 3px solid #555;
             background: var(--grid-color);
             overflow: hidden;
-            transition: transform 0.1s ease-out; /* 정각에 위로 튕기는 효과 */
+            transition: transform 0.1s ease-out; 
         }
 
         canvas {
@@ -112,7 +112,7 @@
     const gameContainer = document.getElementById('game-container');
 
     const COLS = 10;
-    const ROWS = 64; // [1번 반영] 내부 논리 행 개수도 완벽하게 64칸 고정
+    const ROWS = 64; 
     const BLOCK_SIZE_X = 20; 
     const BLOCK_SIZE_Y = 10; 
 
@@ -121,23 +121,20 @@
     
     const targetX = 9;       
     let isAnimating = false; 
-    let freezeBlockY = 0; // [2번 반영] 튕김 연출 시 하늘색 블록 위치 고정용 좌표 백업 변수
+    let lastTriggeredMin = -1; // 중복 실행 방지 및 정확한 00초 타격용 변수
+    let freezeBlockY = 0;      // 정각 연출 시 하늘색 블록 위치 고정용 변수
 
     // 실시간 분(Minute)에 따른 성벽 초기화 함수
     function generateWall() {
         const now = new Date();
         const currentMin = now.getMinutes();
         
-        // 15분 주기 중 현재 몇 분이 지났는지에 따라 4줄씩 삭제 처리
         const clearedLines = (currentMin % 15) * 4;
-        
-        // 배경 64칸 중 위쪽 4줄은 무조건 빈 공간, 성벽은 아래쪽 최대 60칸만 채워짐
         const maxWallRows = ROWS - 4; 
         const activeRows = maxWallRows - clearedLines;
 
         board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
         
-        // 아래서부터 계산하여 빽빽하게 블록을 채워 올림
         for (let r = ROWS - activeRows; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 if (c !== targetX) {
@@ -164,7 +161,7 @@
         // 2. 하늘색 롱블록 실시간 위치 그리기
         ctx.fillStyle = '#00f0f0';
         if (!isAnimating) {
-            // [1번 반영] 00초~01초 영역에서 배경 네모의 맨 위 끝칸(Y=0)에 딱 붙어서 정확히 노출 시작
+            // 00초 스폰 위치 규칙 엄수 및 1초에 1칸씩 하강
             let blockY = currentSec; 
             
             for (let i = 0; i < 4; i++) {
@@ -174,7 +171,7 @@
                 }
             }
         } else {
-            // [2번 반영] 튕김 연출 실행 중에는 연산 버그로 위로 튀지 않고, 바닥 안착 자리에 완벽하게 고정
+            // [수정] 정각 연출 중에는 중간에 멈추지 않고, 바닥 성벽 바로 위 안착 위치에 완벽히 고정됨
             for (let i = 0; i < 4; i++) {
                 let currentBlockY = freezeBlockY + i;
                 if (currentBlockY >= 0 && currentBlockY < ROWS) {
@@ -195,7 +192,7 @@
     // 15분 주기 완료 시 초고속 리로드 애니메이션
     function reloadWallAnimation() {
         isAnimating = true;
-        let r = 4; // 상단 4줄 여백 제외하고 5번째 줄부터 차오름
+        let r = 4; 
         
         const interval = setInterval(() => {
             if (r < ROWS) {
@@ -211,7 +208,7 @@
         }, 15);
     }
 
-    // 메인 시계 타이머 (0.2초마다 실시간 체크)
+    // 메인 시계 타이머 (실시간 체크)
     function ticTok() {
         if (isAnimating) return;
 
@@ -219,9 +216,15 @@
         const sec = now.getSeconds();
         const min = now.getMinutes();
 
-        if (sec === 0) {
+        // [수정] 59초 오작동을 차단하고, 정확히 00초 정각이 되었을 때만 튕김 루틴이 실행되도록 정밀 조정
+        if (sec === 0 && min !== lastTriggeredMin) {
+            lastTriggeredMin = min;
             triggerClearRoutine(min);
             return;
+        }
+
+        if (sec !== 0) {
+            lastTriggeredMin = -1; // 00초가 지나면 트리거 잠금 해제
         }
 
         updateScoreBoard();
@@ -232,11 +235,17 @@
     function triggerClearRoutine(currentMin) {
         isAnimating = true;
         
-        const clearedLines = (currentMin % 15) * 4; 
-        // 이번 정각에 하늘색 블록이 닿아 멈추어야 하는 바닥 Y라인 정확히 계산
-        const floorY = ROWS - (clearedLines === 0 ? 0 : clearedLines - 4);
-        
-        // [2번 반영] 정각 연출이 진행되는 동안 하늘색 블록이 순간이동하지 않도록 현재 바닥 안착 좌표를 그대로 백업 고정
+        // 00초 정각 순간, 하늘색 블록이 닿아야 하는 실제 성벽 상단 라인(Y)을 실시간 보드 기반으로 역산
+        let floorY = 0;
+        for (let r = 0; r < ROWS; r++) {
+            if (board[r][0] !== 0) {
+                floorY = r;
+                break;
+            }
+        }
+        if (floorY === 0) floorY = ROWS; // 성벽이 아예 없는 비어있는 판일 경우 최하단 고정
+
+        // [수정] 하늘색 블록이 중간 허공에 멈추지 않고, 맨 아래 성벽 바로 위 칸에 닿은 채로 고정되도록 정확한 좌표 대입
         freezeBlockY = floorY - 4; 
 
         // 1단계: 00초 정각에 롱블록을 맨 바닥에 완벽히 채워진 형태로 보드 데이터에 선반영
@@ -249,21 +258,26 @@
         draw(0);
         gameContainer.classList.add('flash'); 
 
-        // [2번 반영] 컨테이너 전체를 위로 튕겨서, 하늘색 블록도 성벽 바닥에 철컥 붙은 채 움직이지 않게 처리
+        // 컨테이너 전체를 위로 튕겨서 튕김 모션 연출
         gameContainer.style.transform = "translateY(-20px)";
 
-        // 2단계: 0.3초(300ms) 동안 가득 찬 연출 상태 홀딩
+        // 2단계: 0.3초(300ms) 동안 제자리 고정 연출 홀딩
         setTimeout(() => {
             gameContainer.style.transform = "translateY(0px)"; // 제자리 복귀
             gameContainer.classList.remove('flash');
 
-            // 3단계: [3번 반영] 새로고침 필요 없이 내부 데이터를 완전히 재정렬하여 즉시 반영
-            // 실시간 분을 기준으로 보드를 다시 완전 동기화하여 완벽한 하강 피드백 보장
-            generateWall();
+            // 3단계: [수정] 갈아엎는 generateWall()을 삭제하고, 4줄을 삭제한 보드 데이터를 그대로 유지 (실시간 반영 완성)
+            const targetRowStart = freezeBlockY;
+            if (targetRowStart >= 0 && targetRowStart + 4 <= ROWS) {
+                board.splice(targetRowStart, 4); 
+                for (let i = 0; i < 4; i++) {
+                    board.unshift(Array(COLS).fill(0));
+                }
+            }
 
             updateScoreBoard(currentMin);
             
-            // 데이터 변경 직후 스크린 리드로우 강제 호출로 완벽한 실시간 연출 완료
+            // 데이터 변경 직후 즉시 리드로우를 실행하여 새로고침 없이 4줄이 사라진 보드를 눈앞에 노출
             draw(0); 
             isAnimating = false;
 
@@ -284,7 +298,7 @@
     updateScoreBoard();
     draw(new Date().getSeconds());
     
-    setInterval(ticTok, 200);
+    setInterval(ticTok, 100); // 더 정밀한 타이밍 포착을 위해 인터벌 주기 최적화
 </script>
 
 </body>
