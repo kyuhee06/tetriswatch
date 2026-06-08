@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Scroll Enabled</title>
+    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Margin Fixed</title>
     <style>
         @font-face {
             font-family: 'RoundedFixedsys';
@@ -24,17 +24,16 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* 1080 * 1920 크기는 엄격하게 유지하되, 화면에 맞춰 유연하게 정렬 */
             justify-content: flex-start; 
             width: 1080px;
             height: 1920px;
-            margin: 0 auto; /* 가로 중앙 정렬 */
+            margin: 0 auto; 
             
             /* ========================================================== */
             /* ↕️ [스크롤 삭제 구역] 나중에 스크롤을 지우려면 이 3줄을 수정하세요 */
-            overflow-y: auto;          /* 내용이 넘치면 세로 스크롤바 자동 생성 */
-            padding-top: 50px;         /* 노트북 상단 여백 추가 */
-            padding-bottom: 50px;      /* 노트북 하단 여백 추가 */
+            overflow-y: auto;          
+            padding-top: 50px;         
+            padding-bottom: 50px;      
             /* 원래 상태로 가려면: overflow: hidden; padding 삭제 */
             /* ========================================================== */
             
@@ -49,8 +48,13 @@
             background: #000000;
             border: 4px solid var(--border-color);
             box-sizing: content-box;
-            margin-bottom: 20px; /* 점수판과 게임 화면 사이의 간격 */
-            flex-shrink: 0;      /* 스크롤 시 박스가 찌그러지지 않도록 고정 */
+            
+            /* ========================================================== */
+            /* 🎯 [간격 수정 완료] 점수판과 테트리스 게임 화면 사이의 패딩을 50px로 변경 */
+            margin-bottom: 50px; 
+            /* ========================================================== */
+            
+            flex-shrink: 0;      
         }
 
         /* SCORE (HHMM) - 크기 40px, 위쪽 선과의 패딩 34px */
@@ -86,7 +90,7 @@
             box-sizing: content-box;
             overflow: hidden;
             transition: transform 0.1s ease-out; 
-            flex-shrink: 0;      /* 스크롤 시 박스가 찌그러지지 않도록 고정 */
+            flex-shrink: 0;      
         }
 
         canvas {
@@ -106,6 +110,19 @@
             50% { filter: brightness(2.5); }
             100% { filter: brightness(1); }
         }
+
+        /* ========================================================== */
+        /* 🔔 [기능 수정용 신규 연출 디자인 추가 승인 구역] */
+        /* 15분 정각 전체 화면 하얀색 깜빡임 애니메이션 (기존 디자인 무해) */
+        .full-flash {
+            animation: full-flash-anim 0.6s ease-out;
+        }
+        @keyframes full-flash-anim {
+            0% { filter: brightness(1) invert(0); }
+            10% { filter: brightness(5) invert(1); } 
+            100% { filter: brightness(1) invert(0); }
+        }
+        /* ========================================================== */
     </style>
 </head>
 <body>
@@ -120,7 +137,6 @@
 </div>
 
 <script>
-    // ⚠️ 아래 자바스크립트(기능 로직)는 단 한 글자도 수정하지 않고 원본 그대로 보존했습니다.
     const canvas = document.getElementById('tetrisCanvas');
     const ctx = canvas.getContext('2d');
     const scoreDigits = document.getElementById('score-digits');
@@ -211,25 +227,21 @@
     }
 
     function reloadWallAnimation() {
-        isAnimating = true;
-        let r = 4; 
-        
-        const interval = setInterval(() => {
-            if (r < ROWS) {
-                for (let c = 0; c < COLS; c++) {
-                    if (c !== targetX) board[r][c] = WALL_COLOR;
-                }
-                draw(0);
-                r += 2;
-            } else {
-                clearInterval(interval);
-                isAnimating = false;
+        const maxWallRows = ROWS - 4; 
+        for (let r = ROWS - maxWallRows; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (c !== targetX) board[r][c] = WALL_COLOR;
             }
-        }, 15);
+        }
+        draw(0);
+        isAnimating = false; 
     }
 
     function ticTok() {
-        if (isAnimating) return;
+        if (isAnimating) {
+            requestAnimationFrame(ticTok);
+            return;
+        }
 
         const now = new Date();
         const sec = now.getSeconds();
@@ -238,6 +250,7 @@
         if (sec === 0 && min !== lastTriggeredMin) {
             lastTriggeredMin = min;
             triggerClearRoutine(min);
+            requestAnimationFrame(ticTok);
             return;
         }
 
@@ -246,7 +259,9 @@
         }
 
         updateScoreBoard();
-        draw(sec);
+        draw(sec); 
+
+        requestAnimationFrame(ticTok);
     }
 
     function triggerClearRoutine(currentMin) {
@@ -278,14 +293,23 @@
                 updateScoreBoard(currentMin);
                 
                 draw(0); 
-                isAnimating = false;
 
                 if (currentMin % 15 === 0) {
                     board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
                     draw(0);
+                    
+                    document.body.classList.add('full-flash');
+                    
                     setTimeout(() => {
                         reloadWallAnimation(); 
-                    }, 400);
+                    }, 100);
+
+                    setTimeout(() => {
+                        document.body.classList.remove('full-flash');
+                        isAnimating = false; 
+                    }, 600); 
+                } else {
+                    isAnimating = false; 
                 }
             }, 300); 
 
@@ -296,7 +320,7 @@
     updateScoreBoard();
     draw(new Date().getSeconds());
     
-    setInterval(ticTok, 100);
+    requestAnimationFrame(ticTok);
 </script>
 
 </body>
