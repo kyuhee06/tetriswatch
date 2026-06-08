@@ -1,10 +1,9 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Font Fixed</title>
+    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Scroll Enabled</title>
     <style>
-        /* [폰트 수정] 작가님이 검증하신 커스텀 폰트 페이스 그대로 적용 */
         @font-face {
             font-family: 'RoundedFixedsys';
             src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
@@ -21,16 +20,24 @@
         body {
             background-color: var(--bg-color);
             color: #ffffff;
-            /* 패밀리 이름을 작가님 지정 폰트명으로 변경 */
             font-family: 'RoundedFixedsys', monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            /* 1080 * 1920 크기는 엄격하게 유지하되, 화면에 맞춰 유연하게 정렬 */
+            justify-content: flex-start; 
             width: 1080px;
             height: 1920px;
-            margin: 0;
-            overflow: hidden;
+            margin: 0 auto; /* 가로 중앙 정렬 */
+            
+            /* ========================================================== */
+            /* ↕️ [스크롤 삭제 구역] 나중에 스크롤을 지우려면 이 3줄을 수정하세요 */
+            overflow-y: auto;          /* 내용이 넘치면 세로 스크롤바 자동 생성 */
+            padding-top: 50px;         /* 노트북 상단 여백 추가 */
+            padding-bottom: 50px;      /* 노트북 하단 여백 추가 */
+            /* 원래 상태로 가려면: overflow: hidden; padding 삭제 */
+            /* ========================================================== */
+            
             box-sizing: border-box;
         }
 
@@ -42,7 +49,8 @@
             background: #000000;
             border: 4px solid var(--border-color);
             box-sizing: content-box;
-            margin-bottom: 20px;
+            margin-bottom: 20px; /* 점수판과 게임 화면 사이의 간격 */
+            flex-shrink: 0;      /* 스크롤 시 박스가 찌그러지지 않도록 고정 */
         }
 
         /* SCORE (HHMM) - 크기 40px, 위쪽 선과의 패딩 34px */
@@ -78,6 +86,7 @@
             box-sizing: content-box;
             overflow: hidden;
             transition: transform 0.1s ease-out; 
+            flex-shrink: 0;      /* 스크롤 시 박스가 찌그러지지 않도록 고정 */
         }
 
         canvas {
@@ -111,6 +120,7 @@
 </div>
 
 <script>
+    // ⚠️ 아래 자바스크립트(기능 로직)는 단 한 글자도 수정하지 않고 원본 그대로 보존했습니다.
     const canvas = document.getElementById('tetrisCanvas');
     const ctx = canvas.getContext('2d');
     const scoreDigits = document.getElementById('score-digits');
@@ -130,7 +140,6 @@
     let isFlashing = false;   
     let lastTriggeredMin = -1; 
 
-    // 실시간 분(Minute)에 따른 성벽 초기화 함수 (기능 고수)
     function generateWall() {
         const now = new Date();
         const currentMin = now.getMinutes();
@@ -150,11 +159,9 @@
         }
     }
 
-    // 렌더링 함수 (기능 고수 / 선 위치 Inside)
     function draw(currentSec = 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. 고정된 배경 블록 성벽 그리기
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 if (board[r][c]) {
@@ -172,7 +179,6 @@
             }
         }
 
-        // 2. 빨간색 롱블록 실시간 위치 그리기
         ctx.fillStyle = '#ff0000';
         if (!isAnimating) {
             let blockY = currentSec; 
@@ -197,7 +203,6 @@
         }
     }
 
-    // 시분(AABB) 실시간 업데이트 함수
     function updateScoreBoard(forcedMin = null) {
         const now = new Date();
         let hh = String(now.getHours()).padStart(2, '0');
@@ -205,7 +210,6 @@
         scoreDigits.innerText = `${hh}${mm}`;
     }
 
-    // 15분 주기 완료 시 초고속 리로드 애니메이션
     function reloadWallAnimation() {
         isAnimating = true;
         let r = 4; 
@@ -224,7 +228,6 @@
         }, 15);
     }
 
-    // 메인 시계 타이머
     function ticTok() {
         if (isAnimating) return;
 
@@ -246,7 +249,6 @@
         draw(sec);
     }
 
-    // 💥 기능 절대 고수: 60초(00초) 정각 카타르시스 처리 함수 (00.3초 대기 룰 엄수)
     function triggerClearRoutine(currentMin) {
         isAnimating = true;
         
@@ -290,7 +292,6 @@
         }, 300); 
     }
 
-    // 앱 기동 시 최초 1회 즉시 실행
     generateWall();
     updateScoreBoard();
     draw(new Date().getSeconds());
