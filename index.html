@@ -1,74 +1,81 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock)</title>
+    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Font Fixed</title>
     <style>
+        /* [폰트 수정] 작가님이 검증하신 커스텀 폰트 페이스 그대로 적용 */
+        @font-face {
+            font-family: 'RoundedFixedsys';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+            font-weight: normal;
+            font-display: swap;
+        }
+
         :root {
-            --bg-color: #0a0a12;
-            --grid-color: #1a1a2e;
-            --cyan-color: #00f0f0;
+            --bg-color: #000000;
+            --grid-color: #000000;
+            --border-color: #ffffff;
         }
 
         body {
             background-color: var(--bg-color);
-            color: #fff;
-            font-family: 'Courier New', Courier, monospace;
+            color: #ffffff;
+            /* 패밀리 이름을 작가님 지정 폰트명으로 변경 */
+            font-family: 'RoundedFixedsys', monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            width: 1080px;
+            height: 1920px;
             margin: 0;
             overflow: hidden;
-        }
-
-        /* 16:9 세로 디스플레이 레이아웃 캐비닛 */
-        #cabinet {
-            width: 450px;
-            height: 850px;
-            background: #111;
-            border: 4px solid #333;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
             box-sizing: border-box;
         }
 
-        /* 대형 AABB 점수판 (HHMM 시계) */
+        /* 대형 점수판 - 크기: 450px * 250px, 선 두께 4px Outside */
         #scoreboard {
-            width: 100%;
-            background: #000;
-            border: 2px solid #444;
-            padding: 15px;
-            text-align: center;
+            position: relative;
+            width: 450px;
+            height: 250px;
+            background: #000000;
+            border: 4px solid var(--border-color);
+            box-sizing: content-box;
             margin-bottom: 20px;
-            box-sizing: border-box;
-        }
-        #score-label {
-            font-size: 14px;
-            color: #888;
-            letter-spacing: 2px;
-            margin-bottom: 5px;
-        }
-        #score-digits {
-            font-size: 48px;
-            font-weight: bold;
-            color: #00ff00;
-            text-shadow: 0 0 10px rgba(0,255,0,0.5);
-            letter-spacing: 5px;
         }
 
-        /* 테트리스 게임 화면 배경 네모 (세로 64칸) */
+        /* SCORE (HHMM) - 크기 40px, 위쪽 선과의 패딩 34px */
+        #score-label {
+            position: absolute;
+            top: 34px;
+            left: 0;
+            width: 100%;
+            font-size: 40px;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        /* 0000 - 크기 96px, 위쪽 선과의 패딩 101px */
+        #score-digits {
+            position: absolute;
+            top: 101px;
+            left: 0;
+            width: 100%;
+            font-size: 96px;
+            font-weight: bold;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        /* 테트리스 게임 화면 - 크기: 450px * 1440px, 선 두께 4px Outside */
         #game-container {
             position: relative;
-            width: 200px;  
-            height: 640px; 
-            border: 3px solid #555;
+            width: 450px;  
+            height: 1440px; 
+            border: 4px solid var(--border-color);
             background: var(--grid-color);
+            box-sizing: content-box;
             overflow: hidden;
             transition: transform 0.1s ease-out; 
         }
@@ -94,15 +101,13 @@
 </head>
 <body>
 
-<div id="cabinet">
-    <div id="scoreboard">
-        <div id="score-label">SCORE (HHMM)</div>
-        <div id="score-digits">0000</div>
-    </div>
+<div id="scoreboard">
+    <div id="score-label">SCORE (HHMM)</div>
+    <div id="score-digits">0000</div>
+</div>
 
-    <div id="game-container">
-        <canvas id="tetrisCanvas" width="200" height="640"></canvas>
-    </div>
+<div id="game-container">
+    <canvas id="tetrisCanvas" width="450" height="1440"></canvas>
 </div>
 
 <script>
@@ -113,17 +118,19 @@
 
     const COLS = 10;
     const ROWS = 64; 
-    const BLOCK_SIZE_X = 20; 
-    const BLOCK_SIZE_Y = 10; 
+    
+    const BLOCK_SIZE_X = 45; 
+    const BLOCK_SIZE_Y = 22.5; 
 
-    const COLORS = ['#e53e3e', '#dd6b20', '#ecc94b', '#38a169', '#3182ce', '#805ad5'];
+    const WALL_COLOR = '#606060';
     let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     
-    const targetX = 9;       // 10번째 칸 (인덱스 9)
+    const targetX = 5;       
     let isAnimating = false; 
+    let isFlashing = false;   
     let lastTriggeredMin = -1; 
 
-    // [성공 버전 원상복구] 실시간 분(Minute)에 따른 성벽 초기화 함수
+    // 실시간 분(Minute)에 따른 성벽 초기화 함수 (기능 고수)
     function generateWall() {
         const now = new Date();
         const currentMin = now.getMinutes();
@@ -137,13 +144,13 @@
         for (let r = ROWS - activeRows; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 if (c !== targetX) {
-                    board[r][c] = COLORS[(r + c) % COLORS.length];
+                    board[r][c] = WALL_COLOR;
                 }
             }
         }
     }
 
-    // 렌더링 함수
+    // 렌더링 함수 (기능 고수 / 선 위치 Inside)
     function draw(currentSec = 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -151,28 +158,41 @@
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 if (board[r][c]) {
-                    ctx.fillStyle = board[r][c];
-                    ctx.fillRect(c * BLOCK_SIZE_X, r * BLOCK_SIZE_Y, BLOCK_SIZE_X - 1, BLOCK_SIZE_Y - 1);
+                    if (isFlashing && r >= 60) {
+                        ctx.fillStyle = '#ffffff';
+                    } else {
+                        ctx.fillStyle = board[r][c];
+                    }
+                    
+                    ctx.fillRect(c * BLOCK_SIZE_X, r * BLOCK_SIZE_Y, BLOCK_SIZE_X, BLOCK_SIZE_Y);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(c * BLOCK_SIZE_X + 1, r * BLOCK_SIZE_Y + 1, BLOCK_SIZE_X - 2, BLOCK_SIZE_Y - 2);
                 }
             }
         }
 
-        // 2. 하늘색 롱블록 실시간 위치 그리기
-        ctx.fillStyle = '#00f0f0';
+        // 2. 빨간색 롱블록 실시간 위치 그리기
+        ctx.fillStyle = '#ff0000';
         if (!isAnimating) {
             let blockY = currentSec; 
             
             for (let i = 0; i < 4; i++) {
                 let currentBlockY = blockY + i;
                 if (currentBlockY >= 0 && currentBlockY < ROWS) {
-                    ctx.fillRect(targetX * BLOCK_SIZE_X, currentBlockY * BLOCK_SIZE_Y, BLOCK_SIZE_X - 1, BLOCK_SIZE_Y - 1);
+                    ctx.fillRect(targetX * BLOCK_SIZE_X, currentBlockY * BLOCK_SIZE_Y, BLOCK_SIZE_X, BLOCK_SIZE_Y);
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(targetX * BLOCK_SIZE_X + 1, currentBlockY * BLOCK_SIZE_Y + 1, BLOCK_SIZE_X - 2, BLOCK_SIZE_Y - 2);
                 }
             }
         } else {
-            // [수정] 작가님이 지정하신 00초 절대 안착 좌표 고정 (맨 아래 4칸: 60, 61, 62, 63행)
             for (let i = 0; i < 4; i++) {
                 let currentBlockY = 60 + i;
-                ctx.fillRect(targetX * BLOCK_SIZE_X, currentBlockY * BLOCK_SIZE_Y, BLOCK_SIZE_X - 1, BLOCK_SIZE_Y - 1);
+                ctx.fillRect(targetX * BLOCK_SIZE_X, currentBlockY * BLOCK_SIZE_Y, BLOCK_SIZE_X, BLOCK_SIZE_Y);
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(targetX * BLOCK_SIZE_X + 1, currentBlockY * BLOCK_SIZE_Y + 1, BLOCK_SIZE_X - 2, BLOCK_SIZE_Y - 2);
             }
         }
     }
@@ -193,7 +213,7 @@
         const interval = setInterval(() => {
             if (r < ROWS) {
                 for (let c = 0; c < COLS; c++) {
-                    if (c !== targetX) board[r][c] = COLORS[(r + c) % COLORS.length];
+                    if (c !== targetX) board[r][c] = WALL_COLOR;
                 }
                 draw(0);
                 r += 2;
@@ -204,7 +224,7 @@
         }, 15);
     }
 
-    // 메인 시계 타이머 (실시간 체크)
+    // 메인 시계 타이머
     function ticTok() {
         if (isAnimating) return;
 
@@ -212,7 +232,6 @@
         const sec = now.getSeconds();
         const min = now.getMinutes();
 
-        // 정확히 00초 정각 진입 체크
         if (sec === 0 && min !== lastTriggeredMin) {
             lastTriggeredMin = min;
             triggerClearRoutine(min);
@@ -227,28 +246,26 @@
         draw(sec);
     }
 
-    // 💥 60초(00초) 정각 카타르시스 처리 함수
+    // 💥 기능 절대 고수: 60초(00초) 정각 카타르시스 처리 함수 (00.3초 대기 룰 엄수)
     function triggerClearRoutine(currentMin) {
         isAnimating = true;
         
-        // 00초가 되자마자 하늘색 블록을 작가님이 말씀하신 맨 바닥 4칸(60~63행)에 즉시 꽂아 넣고 정지 상태 렌더링
         for (let i = 0; i < 4; i++) {
-            board[60 + i][targetX] = '#00f0f0';
+            board[60 + i][targetX] = '#ff0000';
         }
         draw(0);
 
-        // [수정] 00초 정각에는 아무것도 하지 않고 대기하다가, 정확히 00.3초(300ms)가 되는 순간 모든 정각 동작 동시 실행
         setTimeout(() => {
-            // 튕김 애니메이션 및 번쩍임 가동
+            isFlashing = true; 
             gameContainer.classList.add('flash'); 
             gameContainer.style.transform = "translateY(-20px)";
+            draw(0); 
 
-            // 튕긴 상태 유지 및 파괴 처리를 위한 미세 딜레이 루틴
             setTimeout(() => {
-                gameContainer.style.transform = "translateY(0px)"; // 제자리 복귀
+                gameContainer.style.transform = "translateY(0px)"; 
                 gameContainer.classList.remove('flash');
+                isFlashing = false; 
 
-                // [성공 버전 코드 철저히 엄수] 4줄을 삭제 연산한 후 generateWall()로 실시간 분 동기화
                 const targetRowStart = 60;
                 board.splice(targetRowStart, 4); 
                 for (let i = 0; i < 4; i++) {
@@ -261,7 +278,6 @@
                 draw(0); 
                 isAnimating = false;
 
-                // 15분 전체 리셋 룰
                 if (currentMin % 15 === 0) {
                     board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
                     draw(0);
@@ -269,9 +285,9 @@
                         reloadWallAnimation(); 
                     }, 400);
                 }
-            }, 300); // 튕김 모션 유지 시간
+            }, 300); 
 
-        }, 300); // [수정] 00.3초 대기 타이밍
+        }, 300); 
     }
 
     // 앱 기동 시 최초 1회 즉시 실행
