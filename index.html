@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Bottom Alignment Fixed</title>
+    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Final Layout Fixed</title>
     <style>
         :root {
             --bg-color: #000000;
@@ -24,14 +24,14 @@
             cursor: none; /* 마우스 커서 안 보이게 설정 */
         }
 
-        /* 게임 화면 크기 (366px * 1759px) 및 중앙 정렬 유지 */
+        /* 🎯 요구사항 반영: 가로 366px, 세로 1732px & 테두리는 바깥쪽(content-box)으로 설정 */
         #game-container {
             position: relative;
             width: 366px;  
-            height: 1759px; 
+            height: 1732px; 
             border: 4px solid var(--border-color);
             background: var(--grid-color);
-            box-sizing: border-box;
+            box-sizing: content-box; /* 테두리가 바깥쪽으로 그려지도록 수정 */
             overflow: hidden;
             transition: transform 0.1s ease-out; 
             
@@ -153,7 +153,6 @@
                         ctx.fillStyle = board[r][c];
                     }
                     
-                    // 🎯 맨 하단 흰 선 위로 정확히 2px 여백이 남도록 드로잉 오프셋 배치
                     ctx.fillRect(c * BLOCK_SIZE_X, r * BLOCK_SIZE_Y, BLOCK_SIZE_X, BLOCK_SIZE_Y);
                     ctx.strokeStyle = '#000000';
                     ctx.lineWidth = 2;
