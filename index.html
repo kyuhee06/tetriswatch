@@ -2,15 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Margin Fixed</title>
+    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Updated</title>
     <style>
-        @font-face {
-            font-family: 'RoundedFixedsys';
-            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
-            font-weight: normal;
-            font-display: swap;
-        }
-
         :root {
             --bg-color: #000000;
             --grid-color: #000000;
@@ -20,77 +13,27 @@
         body {
             background-color: var(--bg-color);
             color: #ffffff;
-            font-family: 'RoundedFixedsys', monospace;
+            margin: 0;
+            padding: 0;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            justify-content: flex-start; 
+            justify-content: center; 
             width: 1080px;
             height: 1920px;
-            margin: 0 auto; 
-            
-            /* ========================================================== */
-            /* ↕️ [스크롤 삭제 구역] 나중에 스크롤을 지우려면 이 3줄을 수정하세요 */
-            overflow-y: auto;          
-            padding-top: 50px;         
-            padding-bottom: 50px;      
-            /* 원래 상태로 가려면: overflow: hidden; padding 삭제 */
-            /* ========================================================== */
-            
             box-sizing: border-box;
+            overflow: hidden; /* 스크롤바 삭제 */
         }
 
-        /* 대형 점수판 - 크기: 450px * 250px, 선 두께 4px Outside */
-        #scoreboard {
-            position: relative;
-            width: 450px;
-            height: 250px;
-            background: #000000;
-            border: 4px solid var(--border-color);
-            box-sizing: content-box;
-            
-            /* ========================================================== */
-            /* 🎯 [간격 수정 완료] 점수판과 테트리스 게임 화면 사이의 패딩을 50px로 변경 */
-            margin-bottom: 50px; 
-            /* ========================================================== */
-            
-            flex-shrink: 0;      
-        }
-
-        /* SCORE (HHMM) - 크기 40px, 위쪽 선과의 패딩 34px */
-        #score-label {
-            position: absolute;
-            top: 34px;
-            left: 0;
-            width: 100%;
-            font-size: 40px;
-            color: #ffffff;
-            text-align: center;
-        }
-
-        /* 0000 - 크기 96px, 위쪽 선과의 패딩 101px */
-        #score-digits {
-            position: absolute;
-            top: 101px;
-            left: 0;
-            width: 100%;
-            font-size: 96px;
-            font-weight: bold;
-            color: #ffffff;
-            text-align: center;
-        }
-
-        /* 테트리스 게임 화면 - 크기: 450px * 1440px, 선 두께 4px Outside */
+        /* 🎯 요구사항 1 & 2: 점수판 삭제 및 정확한 화면 크기 지정 (366px * 1759px) */
         #game-container {
             position: relative;
-            width: 450px;  
-            height: 1440px; 
+            width: 366px;  
+            height: 1759px; 
             border: 4px solid var(--border-color);
             background: var(--grid-color);
-            box-sizing: content-box;
+            box-sizing: border-box;
             overflow: hidden;
             transition: transform 0.1s ease-out; 
-            flex-shrink: 0;      
         }
 
         canvas {
@@ -111,9 +54,7 @@
             100% { filter: brightness(1); }
         }
 
-        /* ========================================================== */
-        /* 🔔 [기능 수정용 신규 연출 디자인 추가 승인 구역] */
-        /* 15분 정각 전체 화면 하얀색 깜빡임 애니메이션 (기존 디자인 무해) */
+        /* 15분 정각 전체 화면 하얀색 깜빡임 애니메이션 */
         .full-flash {
             animation: full-flash-anim 0.6s ease-out;
         }
@@ -122,39 +63,65 @@
             10% { filter: brightness(5) invert(1); } 
             100% { filter: brightness(1) invert(0); }
         }
-        /* ========================================================== */
     </style>
 </head>
 <body>
 
-<div id="scoreboard">
-    <div id="score-label">SCORE: (HHMM)</div>
-    <div id="score-digits">0000</div>
-</div>
-
 <div id="game-container">
-    <canvas id="tetrisCanvas" width="450" height="1440"></canvas>
+    <canvas id="tetrisCanvas" width="358" height="1751"></canvas>
 </div>
 
 <script>
     const canvas = document.getElementById('tetrisCanvas');
     const ctx = canvas.getContext('2d');
-    const scoreDigits = document.getElementById('score-digits');
     const gameContainer = document.getElementById('game-container');
 
-    const COLS = 10;
+    // 🎯 요구사항 2: 블록 크기 30 * 27px 및 이에 맞는 칸수 계산 (가로 12칸, 세로 64칸근접)
+    const COLS = 12; 
     const ROWS = 64; 
     
-    const BLOCK_SIZE_X = 45; 
-    const BLOCK_SIZE_Y = 22.5; 
+    const BLOCK_SIZE_X = 30; 
+    const BLOCK_SIZE_Y = 27; 
 
     const WALL_COLOR = '#606060';
+    
+    // 🎯 요구사항 4: 시간대별 랜덤 색상 리스트
+    const BLOCK_COLORS = ['#FF0000', '#FF7B00', '#FFEA00', '#00FF4D', '#00FFFF', '#004DFF', '#FF00F2'];
+    
     let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     
-    const targetX = 5;       
+    let targetX = Math.floor(COLS / 2); // 비어있는 세로 줄 (기본값 중앙)
+    let currentBlockColor = '#FF0000';  // 현재 떨어지는 블록 색상
+    let lastHour = -1;
+    
     let isAnimating = false; 
     let isFlashing = false;   
     let lastTriggeredMin = -1; 
+
+    // 🎯 요구사항 4: 직전 색상과 겹치지 않게 랜덤 색상 선택하는 함수
+    function updateBlockColor() {
+        const now = new Date();
+        const currentHour = now.getHours();
+        
+        if (currentHour !== lastHour) {
+            let newColor;
+            do {
+                newColor = BLOCK_COLORS[Math.floor(Math.random() * BLOCK_COLORS.length)];
+            } while (newColor === currentBlockColor);
+            
+            currentBlockColor = newColor;
+            lastHour = currentHour;
+        }
+    }
+
+    // 🎯 요구사항 3: 직전 위치와 겹치지 않게 비어있는 줄 랜덤 설정하는 함수
+    function updateTargetXRandomly() {
+        let newTargetX;
+        do {
+            newTargetX = Math.floor(Math.random() * COLS);
+        } while (newTargetX === targetX);
+        targetX = newTargetX;
+    }
 
     function generateWall() {
         const now = new Date();
@@ -178,6 +145,7 @@
     function draw(currentSec = 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // 성벽 블록 그리기
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 if (board[r][c]) {
@@ -195,7 +163,8 @@
             }
         }
 
-        ctx.fillStyle = '#ff0000';
+        // 떨어지는 빨간색(혹은 시간별 랜덤색) 블록 그리기
+        ctx.fillStyle = currentBlockColor;
         if (!isAnimating) {
             let blockY = currentSec; 
             
@@ -219,13 +188,6 @@
         }
     }
 
-    function updateScoreBoard(forcedMin = null) {
-        const now = new Date();
-        let hh = String(now.getHours()).padStart(2, '0');
-        let mm = String(forcedMin !== null ? forcedMin : now.getMinutes()).padStart(2, '0');
-        scoreDigits.innerText = `${hh}${mm}`;
-    }
-
     function reloadWallAnimation() {
         const maxWallRows = ROWS - 4; 
         for (let r = ROWS - maxWallRows; r < ROWS; r++) {
@@ -247,6 +209,9 @@
         const sec = now.getSeconds();
         const min = now.getMinutes();
 
+        // 실시간 색상 체크 업데이트
+        updateBlockColor();
+
         if (sec === 0 && min !== lastTriggeredMin) {
             lastTriggeredMin = min;
             triggerClearRoutine(min);
@@ -258,9 +223,7 @@
             lastTriggeredMin = -1; 
         }
 
-        updateScoreBoard();
         draw(sec); 
-
         requestAnimationFrame(ticTok);
     }
 
@@ -268,7 +231,7 @@
         isAnimating = true;
         
         for (let i = 0; i < 4; i++) {
-            board[60 + i][targetX] = '#ff0000';
+            board[60 + i][targetX] = currentBlockColor;
         }
         draw(0);
 
@@ -289,9 +252,12 @@
                     board.unshift(Array(COLS).fill(0));
                 }
 
+                // 🎯 요구사항 3: 15분마다 채워질 때 비어있는 라인 랜덤 변경 조치
+                if (currentMin % 15 === 0) {
+                    updateTargetXRandomly(); 
+                }
+
                 generateWall();
-                updateScoreBoard(currentMin);
-                
                 draw(0); 
 
                 if (currentMin % 15 === 0) {
@@ -316,8 +282,9 @@
         }, 300); 
     }
 
+    // 초기 구동 실행
+    updateBlockColor();
     generateWall();
-    updateScoreBoard();
     draw(new Date().getSeconds());
     
     requestAnimationFrame(ticTok);
