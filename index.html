@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Updated</title>
+    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Scroll & No Cursor</title>
     <style>
         :root {
             --bg-color: #000000;
@@ -21,10 +21,12 @@
             width: 1080px;
             height: 1920px;
             box-sizing: border-box;
-            overflow: hidden; /* 스크롤바 삭제 */
+            
+            /* 🎯 추가 수정사항: 스크롤 활성화 및 마우스 커서 숨김 */
+            cursor: none; /* 마우스 커서 안 보이게 설정 */
         }
 
-        /* 🎯 요구사항 1 & 2: 점수판 삭제 및 정확한 화면 크기 지정 (366px * 1759px) */
+        /* 게임 화면 크기 (366px * 1759px) */
         #game-container {
             position: relative;
             width: 366px;  
@@ -76,7 +78,6 @@
     const ctx = canvas.getContext('2d');
     const gameContainer = document.getElementById('game-container');
 
-    // 🎯 요구사항 2: 블록 크기 30 * 27px 및 이에 맞는 칸수 계산 (가로 12칸, 세로 64칸근접)
     const COLS = 12; 
     const ROWS = 64; 
     
@@ -85,20 +86,18 @@
 
     const WALL_COLOR = '#606060';
     
-    // 🎯 요구사항 4: 시간대별 랜덤 색상 리스트
     const BLOCK_COLORS = ['#FF0000', '#FF7B00', '#FFEA00', '#00FF4D', '#00FFFF', '#004DFF', '#FF00F2'];
     
     let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     
-    let targetX = Math.floor(COLS / 2); // 비어있는 세로 줄 (기본값 중앙)
-    let currentBlockColor = '#FF0000';  // 현재 떨어지는 블록 색상
+    let targetX = Math.floor(COLS / 2); 
+    let currentBlockColor = '#FF0000';  
     let lastHour = -1;
     
     let isAnimating = false; 
     let isFlashing = false;   
     let lastTriggeredMin = -1; 
 
-    // 🎯 요구사항 4: 직전 색상과 겹치지 않게 랜덤 색상 선택하는 함수
     function updateBlockColor() {
         const now = new Date();
         const currentHour = now.getHours();
@@ -114,7 +113,6 @@
         }
     }
 
-    // 🎯 요구사항 3: 직전 위치와 겹치지 않게 비어있는 줄 랜덤 설정하는 함수
     function updateTargetXRandomly() {
         let newTargetX;
         do {
@@ -145,7 +143,6 @@
     function draw(currentSec = 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 성벽 블록 그리기
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 if (board[r][c]) {
@@ -163,7 +160,6 @@
             }
         }
 
-        // 떨어지는 빨간색(혹은 시간별 랜덤색) 블록 그리기
         ctx.fillStyle = currentBlockColor;
         if (!isAnimating) {
             let blockY = currentSec; 
@@ -209,7 +205,6 @@
         const sec = now.getSeconds();
         const min = now.getMinutes();
 
-        // 실시간 색상 체크 업데이트
         updateBlockColor();
 
         if (sec === 0 && min !== lastTriggeredMin) {
@@ -252,7 +247,6 @@
                     board.unshift(Array(COLS).fill(0));
                 }
 
-                // 🎯 요구사항 3: 15분마다 채워질 때 비어있는 라인 랜덤 변경 조치
                 if (currentMin % 15 === 0) {
                     updateTargetXRandomly(); 
                 }
@@ -282,7 +276,6 @@
         }, 300); 
     }
 
-    // 초기 구동 실행
     updateBlockColor();
     generateWall();
     draw(new Date().getSeconds());
