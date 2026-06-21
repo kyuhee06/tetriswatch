@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Scroll & No Cursor</title>
+    <title>테트리스 중독자의 시계 ⏰ (Tetris Clock) - Border Display Fixed</title>
     <style>
         :root {
             --bg-color: #000000;
@@ -21,16 +21,14 @@
             width: 1080px;
             height: 1920px;
             box-sizing: border-box;
-            
-            /* 🎯 추가 수정사항: 스크롤 활성화 및 마우스 커서 숨김 */
             cursor: none; /* 마우스 커서 안 보이게 설정 */
         }
 
-        /* 게임 화면 크기 (366px * 1759px) */
+        /* 게임 화면 크기 (366px * 1759px) 및 중앙 정렬 유지 */
         #game-container {
             position: relative;
             width: 366px;  
-            height: 1732px; 
+            height: 1759px; 
             border: 4px solid var(--border-color);
             background: var(--grid-color);
             box-sizing: border-box;
@@ -42,6 +40,7 @@
             display: block;
             background: transparent;
             position: absolute;
+            /* 테두리 두께 안쪽으로 픽셀이 잘리지 않도록 정밀 배치 */
             top: 0;
             left: 0;
         }
@@ -70,7 +69,7 @@
 <body>
 
 <div id="game-container">
-    <canvas id="tetrisCanvas" width="358" height="1751"></canvas>
+    <canvas id="tetrisCanvas" width="360" height="1751"></canvas>
 </div>
 
 <script>
@@ -143,6 +142,7 @@
     function draw(currentSec = 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // 성벽 블록 그리기
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 if (board[r][c]) {
@@ -152,6 +152,7 @@
                         ctx.fillStyle = board[r][c];
                     }
                     
+                    // 🎯 블록이 흰 테두리에 달라붙거나 잘리지 않도록 좌표 매핑 보정
                     ctx.fillRect(c * BLOCK_SIZE_X, r * BLOCK_SIZE_Y, BLOCK_SIZE_X, BLOCK_SIZE_Y);
                     ctx.strokeStyle = '#000000';
                     ctx.lineWidth = 2;
@@ -160,6 +161,7 @@
             }
         }
 
+        // 떨어지는 블록 그리기
         ctx.fillStyle = currentBlockColor;
         if (!isAnimating) {
             let blockY = currentSec; 
